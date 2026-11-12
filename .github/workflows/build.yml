@@ -24,6 +24,8 @@ jobs:
           key: pio-marlin-${{ matrix.rev }}-${{ hashFiles('scripts/build-marlin.sh') }}
       - run: pip install platformio
       - run: scripts/build-marlin.sh ${{ matrix.rev }}
+      - if: failure()
+        run: scripts/diag-marlin.sh
       - uses: actions/upload-artifact@v4
         with:
           name: marlin-${{ matrix.rev }}

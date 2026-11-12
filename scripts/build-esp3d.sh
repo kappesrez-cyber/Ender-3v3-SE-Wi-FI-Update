@@ -31,10 +31,14 @@ done
 (cd "$SRC" && pio run -e "$ENV")
 
 B="$SRC/.pioenvs/$ENV"
-BOOT_APP0="$(find "${PLATFORMIO_CORE_DIR:-$HOME/.platformio}/packages" -path '*framework-arduinoespressif32*' -name boot_app0.bin | head -n1)"
+PKG="${PLATFORMIO_CORE_DIR:-$HOME/.platformio}/packages/framework-arduinoespressif32"
+BOOT_APP0="$(find "$PKG" -name boot_app0.bin | head -n1)"
+# Старые версии платформы не кладут bootloader.bin в каталог сборки — берём из фреймворка (qio, 80 МГц, как в env)
+BOOTLOADER="$B/bootloader.bin"
+[ -f "$BOOTLOADER" ] || BOOTLOADER="$(find "$PKG" -name 'bootloader_qio_80m.bin' | head -n1)"
 cp "$B/firmware.bin" "$OUT/esp3d-esp32-app.bin"
-python3 -m esptool --chip esp32 merge_bin -o "$OUT/esp3d-esp32-merged.bin" \
-  0x1000 "$B/bootloader.bin" \
+python3 -m esptool --chip esp32 merge-bin -o "$OUT/esp3d-esp32-merged.bin" \
+  0x1000 "$BOOTLOADER" \
   0x8000 "$B/partitions.bin" \
   0xe000 "$BOOT_APP0" \
   0x10000 "$B/firmware.bin"
