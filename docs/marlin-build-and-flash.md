@@ -4,11 +4,19 @@
 
 ## Что меняется (C13)
 
-Патч [`marlin/c13/0001-esp3d-on-usart3.patch`](../marlin/c13/0001-esp3d-on-usart3.patch), только `Marlin/Configuration.h`:
+Патч [`marlin/c13/0001-esp3d-on-usart3.patch`](../marlin/c13/0001-esp3d-on-usart3.patch), `Marlin/Configuration.h`:
 
 - `#define SERIAL_PORT_2 3` — второй порт хоста на USART3 (PB10/PB11);
 - `#define BAUDRATE_2 115200`;
 - `STRING_CONFIG_H_AUTHOR "Creality + ESP3D Wi-Fi"` — метка в ответе `M115`, чтобы было видно, что прошита наша сборка.
+
+Патч [`marlin/c13/0002-fix-multi-serial-dwin.patch`](../marlin/c13/0002-fix-multi-serial-dwin.patch), `Marlin/src/inc/Conditionals_LCD.h`: в коде Creality для экрана DWIN стоит `#define SERIAL_CATCHALL 0`, из-за которого второй порт подменялся нулём и сборка с `SERIAL_PORT_2` не компилировалась. С одним портом этот макрос ни на что не влияет, так что поведение стока не меняется.
+
+Кроме того, исходники Creality писались под Windows и подключают `<arduino.h>` и `<wstring.h>` в нижнем регистре. Для сборки на Linux/macOS в [`marlin/shim/`](../marlin/shim) лежат два заголовка-переходника; скрипт сборки добавляет их в путь поиска. Сам код они не меняют.
+
+Результат сборки в CI: Flash 228 КБ из 512 КБ (43,6 %), RAM 23 КБ из 64 КБ (35,6 %) — запас большой.
+
+> Исходники Creality на GitHub (июль 2024) соответствуют одной из версий 1.0.x. Если на принтере стоит 1.1.0, наша сборка будет «откатом» к функциональности публичных исходников. Перед прошивкой сохрани стоковую 1.1.0 для возврата.
 
 Не трогаем: экран DWIN, USB-порт (`SERIAL_PORT 1`), защиту thermal runaway, кинематику, датчики.
 

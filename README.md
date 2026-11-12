@@ -19,7 +19,7 @@ Orca Slicer ──Wi-Fi──► ESP32 (ESP3D 2.1) ──UART──► плат�
 | Часть | Состояние |
 |---|---|
 | Анализ свободных UART (C13/C14) | готово — [docs/uart-analysis.md](docs/uart-analysis.md) |
-| Патч Marlin C13 (USART3, PB10/PB11) | готов; сборка в CI — в работе |
+| Патч Marlin C13 (USART3, PB10/PB11) | готов, собирается в CI (Flash 43,6 %, RAM 35,6 %) |
 | Marlin C14 | свободного аппаратного UART нет, варианты описаны; ждём фото платы |
 | ESP3D для ESP32 (UART2, GPIO16/17, 115200) | готово, собирается в CI |
 | Панель для нескольких принтеров | первая версия готова, нужна проверка на железе |
@@ -37,7 +37,7 @@ Orca Slicer ──Wi-Fi──► ESP32 (ESP3D 2.1) ──UART──► плат�
 **Этап 0 — подготовка (не зависит от железа)** ✅
 - [x] Структура репозитория, скрипты сборки, CI (GitHub Actions)
 - [x] Анализ исходников Marlin Creality для C13 и C14, кандидаты UART
-- [x] Патч Marlin C13: `SERIAL_PORT_2 3`, `BAUDRATE_2 115200`
+- [x] Патч Marlin C13: `SERIAL_PORT_2 3`, `BAUDRATE_2 115200` + исправление `SERIAL_CATCHALL` в коде Creality
 - [x] Конфиг ESP3D: UART2 на GPIO16/17, 115200
 - [x] Инструкции: проверка UART, подключение, ESP3D, прошивка Marlin, Orca
 - [x] Панель для нескольких принтеров + патч CORS для ESP3D
@@ -71,7 +71,8 @@ Orca Slicer ──Wi-Fi──► ESP32 (ESP3D 2.1) ──UART──► плат�
 ## Структура репозитория
 
 ```
-marlin/c13/*.patch        правки Marlin для платы C13 (только Configuration.h)
+marlin/c13/*.patch        правки Marlin для платы C13 (второй порт + фикс сборки с ним)
+marlin/shim/              заголовки-переходники для сборки исходников Creality на Linux
 marlin/c14/               C14 — после выбора варианта подключения
 esp3d/*.patch             правки ESP3D 2.1.x: UART2 GPIO16/17, CORS для панели
 panel/index.html          панель управления всеми принтерами
