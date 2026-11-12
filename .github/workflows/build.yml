@@ -7,12 +7,13 @@ on:
 
 jobs:
   marlin:
-    name: Marlin ${{ matrix.rev }}
+    name: Marlin ${{ matrix.rev }} ${{ matrix.baud }}
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
         rev: [c13]
+        baud: [115200, 250000]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -23,10 +24,10 @@ jobs:
           path: ~/.platformio
           key: pio-marlin-${{ matrix.rev }}-${{ hashFiles('scripts/build-marlin.sh') }}
       - run: pip install platformio
-      - run: scripts/build-marlin.sh ${{ matrix.rev }}
+      - run: BAUD2=${{ matrix.baud }} scripts/build-marlin.sh ${{ matrix.rev }}
       - uses: actions/upload-artifact@v4
         with:
-          name: marlin-${{ matrix.rev }}
+          name: marlin-${{ matrix.rev }}-${{ matrix.baud }}
           path: out/*.bin
 
   esp3d:
