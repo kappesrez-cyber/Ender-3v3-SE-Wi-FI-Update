@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Панель принтеров</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --card: #ffffff; --text: #1d2125; --muted: #626f86; --line: #dcdfe4;
+    --accent: #0c66e4; --ok: #1f845a; --warn: #b65c02; --bad: #c9372c; --bar: #e9f2ff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161a1d; --card: #22272b; --text: #dee4ea; --muted: #9fadbc; --line: #38414a;
+      --accent: #579dff; --ok: #4bce97; --warn: #f5cd47; --bad: #f87168; --bar: #1c2b41;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { padding: 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+  h1 { font-size: 20px; margin: 0; }
+  main { padding: 0 16px 24px; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .between { justify-content: space-between; }
+  .name { font-weight: 600; font-size: 17px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .badge { font-size: 12px; padding: 2px 8px; border-radius: 99px; border: 1px solid currentColor; }
+  .on { color: var(--ok); } .off { color: var(--bad); } .busy { color: var(--warn); }
+  .temps { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .temp { border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+  .temp b { font-size: 20px; font-variant-numeric: tabular-nums; }
+  .progress { height: 8px; background: var(--bar); border-radius: 99px; overflow: hidden; }
+  .progress > div { height: 100%; background: var(--accent); width: 0; transition: width .4s; }
+  button, select, input { font: inherit; color: inherit; }
+  button { background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button.danger { color: var(--bad); }
+  button:disabled { opacity: .5; cursor: default; }
+  input, select { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; min-width: 0; }
+  .grow { flex: 1 1 140px; }
+  pre { margin: 0; max-height: 140px; overflow: auto; background: var(--bg); border-radius: 8px; padding: 8px; font-size: 12px; white-space: pre-wrap; word-break: break-all; }
+  details summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  dialog { border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--text); width: min(420px, calc(100vw - 32px)); }
+  dialog form { display: flex; flex-direction: column; gap: 10px; }
+  .empty { grid-column: 1 / -1; text-align: center; color: var(--muted); padding: 40px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Принтеры</h1>
+  <div class="row">
+    <span class="muted" id="clock"></span>
+    <button class="primary" id="add">Добавить принтер</button>
+  </div>
+</header>
+<main id="grid"></main>
+
+<dialog id="dlg">
+  <form method="dialog" id="dlgForm">
+    <b>Новый принтер</b>
+    <label>Название<br><input name="name" required placeholder="Ender 3 V3 SE №1" style="width:100%"></label>
+    <label>IP или имя модуля ESP3D<br><input name="host" required placeholder="192.168.1.50" style="width:100%"></label>
+    <div class="row" style="justify-content:flex-end">
+      <button value="cancel" formnovalidate>Отмена</button>
+      <button class="primary" value="ok">Добавить</button>
+    </div>
+  </form>
+</dialog>
+
+<template id="tpl">
+  <section class="card">
+    <div class="row between">
+      <div><div class="name"></div><div class="muted host"></div></div>
+      <span class="badge state">…</span>
+    </div>
+    <div class="temps">
+      <div class="temp"><div class="muted">Сопло</div><b class="t-hot">—</b> <span class="muted t-hot-set"></span></div>
+      <div class="temp"><div class="muted">Стол</div><b class="t-bed">—</b> <span class="muted t-bed-set"></span></div>
+    </div>
+    <div>
+      <div class="row between muted"><span class="job">Нет печати</span><span class="pct"></span></div>
+      <div class="progress"><div></div></div>
+    </div>
+    <div class="row">
+      <button data-act="pause">Пауза</button>
+      <button data-act="resume">Продолжить</button>
+      <button data-act="stop" class="danger">Стоп</button>
+    </div>
+    <div class="row">
+      <select class="files grow"><option value="">Файлы на SD…</option></select>
+      <button data-act="refresh">Обновить</button>
+      <button data-act="print" class="primary">Печать</button>
+    </div>
+    <div class="row">
+      <input type="file" class="upfile grow" accept=".gcode,.gco,.g">
+      <button data-act="upload">Загрузить и печатать</button>
+    </div>
+    <div class="muted upstate"></div>
+    <details>
+      <summary>Консоль G-code</summary>
+      <div class="row" style="margin-top:8px">
+        <input class="cmd grow" placeholder="M115">
+        <button data-act="send">Отправить</button>
+      </div>
+      <pre class="log"></pre>
+    </details>
+    <div class="row" style="justify-content:flex-end">
+      <a class="muted web" target="_blank" rel="noopener">Веб-интерфейс ESP3D</a>
+      <button data-act="remove" class="danger">Удалить</button>
+    </div>
+  </section>
+</template>
+
+<script>
+"use strict";
+// Список принтеров хранится в браузере. Ключ — localStorage, с запасным вариантом в памяти.
+const KEY = "e3v3se-panel-printers";
+let memStore = null;
+function load() {
+  try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { return memStore || []; }
+}
+function save(list) {
+  memStore = list;
+  try { localStorage.setItem(KEY, JSON.stringify(list)); } catch (e) {}
+}
+
+const POLL_MS = 5000;
+const printers = new Map(); // id -> state
+
+// Запросы к одному модулю выполняются строго по очереди: ESP3D 2.1 однопоточный.
+function enqueue(p, fn) {
+  const run = p.queue.then(fn, fn);
+  p.queue = run.catch(() => {});
+  return run;
+}
+
+function baseUrl(host) {
+  host = host.trim().replace(/\/+$/, "");
+  return /^https?:\/\//.test(host) ? host : "http://" + host;
+}
+
+async function command(p, gcode, timeoutMs = 6000) {
+  return enqueue(p, async () => {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), timeoutMs);
+    try {
+      const r = await fetch(baseUrl(p.host) + "/command?plain=" + encodeURIComponent(gcode), { signal: ctl.signal, cache: "no-store" });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return await r.text();
+    } finally { clearTimeout(t); }
+  });
+}
+
+function log(p, line) {
+  const pre = p.el.querySelector(".log");
+  pre.textContent = (line + "\n" + pre.textContent).slice(0, 4000);
+}
+
+function parseTemps(txt) {
+  const m = {};
+  const hot = /T:\s*([\d.]+)\s*\/\s*([\d.]+)/.exec(txt);
+  const bed = /B:\s*([\d.]+)\s*\/\s*([\d.]+)/.exec(txt);
+  if (hot) { m.hot = +hot[1]; m.hotSet = +hot[2]; }
+  if (bed) { m.bed = +bed[1]; m.bedSet = +bed[2]; }
+  return m;
+}
+
+function parseProgress(txt) {
+  const m = /SD printing byte\s+(\d+)\s*\/\s*(\d+)/.exec(txt);
+  if (m && +m[2] > 0) return { printing: true, pct: Math.min(100, (100 * +m[1]) / +m[2]) };
+  return { printing: false };
+}
+
+function setState(p, cls, text) {
+  const b = p.el.querySelector(".state");
+  b.className = "badge state " + cls;
+  b.textContent = text;
+}
+
+async function poll(p) {
+  if (p.uploading) return;
+  try {
+    const t = parseTemps(await command(p, "M105"));
+    const pr = parseProgress(await command(p, "M27"));
+    p.online = true;
+    const q = (s) => p.el.querySelector(s);
+    q(".t-hot").textContent = t.hot != null ? t.hot.toFixed(0) + "°" : "—";
+    q(".t-hot-set").textContent = t.hotSet ? "→ " + t.hotSet.toFixed(0) + "°" : "";
+    q(".t-bed").textContent = t.bed != null ? t.bed.toFixed(0) + "°" : "—";
+    q(".t-bed-set").textContent = t.bedSet ? "→ " + t.bedSet.toFixed(0) + "°" : "";
+    q(".progress > div").style.width = pr.printing ? pr.pct.toFixed(1) + "%" : "0";
+    q(".pct").textContent = pr.printing ? pr.pct.toFixed(1) + " %" : "";
+    q(".job").textContent = pr.printing ? "Печатает" + (p.lastFile ? ": " + p.lastFile : "") : "Нет печати";
+    setState(p, pr.printing ? "busy" : "on", pr.printing ? "печать" : "на связи");
+  } catch (e) {
+    p.online = false;
+    setState(p, "off", "нет связи");
+  }
+}
+
+async function refreshFiles(p) {
+  const txt = await command(p, "M20", 10000);
+  const sel = p.el.querySelector(".files");
+  const files = [];
+  let inList = false;
+  for (const raw of txt.split("\n")) {
+    const line = raw.trim();
+    if (line.startsWith("Begin file list")) { inList = true; continue; }
+    if (line.startsWith("End file list")) break;
+    if (inList && line) {
+      // Формат Marlin: "SHORT.GCO 12345" или с длинным именем после размера (LONG_FILENAME_HOST_SUPPORT)
+      const parts = line.split(" ");
+      const short = parts[0];
+      const long = parts.slice(2).join(" ");
+      if (/\.(gco|gcode|g)$/i.test(short)) files.push({ short, label: long || short });
+    }
+  }
+  sel.innerHTML = '<option value="">' + (files.length ? "Выберите файл" : "На SD нет G-code") + "</option>";
+  for (const f of files) {
+    const o = document.createElement("option");
+    o.value = f.short; o.textContent = f.label;
+    sel.appendChild(o);
+  }
+}
+
+// Имя в формате 8.3, как это делает Orca Slicer для ESP3D.
+function shortName(name) {
+  const dot = name.lastIndexOf(".");
+  let base = (dot > 0 ? name.slice(0, dot) : name).replace(/[^A-Za-z0-9_-]/g, "").toUpperCase() || "PRINT";
+  return base.slice(0, 8) + ".GCO";
+}
+
+function upload(p, file) {
+  return enqueue(p, () => new Promise((resolve, reject) => {
+    const name = shortName(file.name);
+    const fd = new FormData();
+    fd.append("file", file, name);
+    const xhr = new XMLHttpRequest();
+    const st = p.el.querySelector(".upstate");
+    xhr.open("POST", baseUrl(p.host) + "/upload_serial");
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) st.textContent = "Загрузка " + name + ": " + ((100 * e.loaded) / e.total).toFixed(0) + " %";
+    };
+    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve(name) : reject(new Error("HTTP " + xhr.status)));
+    xhr.onerror = () => reject(new Error("сеть"));
+    xhr.send(fd);
+  }));
+}
+
+async function startPrint(p, name) {
+  await command(p, "M23 " + name);
+  await command(p, "M24");
+  p.lastFile = name;
+  log(p, "> M23 " + name + " / M24");
+}
+
+async function act(p, what) {
+  const q = (s) => p.el.querySelector(s);
+  try {
+    if (what === "pause") log(p, await command(p, "M25"));
+    if (what === "resume") log(p, await command(p, "M24"));
+    if (what === "stop" && confirmStop(p)) log(p, await command(p, "M524"));
+    if (what === "refresh") await refreshFiles(p);
+    if (what === "print") {
+      const f = q(".files").value;
+      if (f) await startPrint(p, f);
+    }
+    if (what === "send") {
+      const c = q(".cmd").value.trim();
+      if (c) { log(p, "> " + c + "\n" + (await command(p, c, 15000))); q(".cmd").value = ""; }
+    }
+    if (what === "upload") {
+      const file = q(".upfile").files[0];
+      if (!file) return;
+      p.uploading = true;
+      setState(p, "busy", "загрузка");
+      try {
+        const name = await upload(p, file);
+        q(".upstate").textContent = "Загружено: " + name + ". Запускаю печать…";
+        await new Promise((r) => setTimeout(r, 2000)); // Marlin нужно время после M29
+        await startPrint(p, name);
+        q(".upstate").textContent = "Печать запущена: " + name;
+      } finally { p.uploading = false; }
+    }
+    if (what === "remove") {
+      save(load().filter((x) => x.id !== p.id));
+      clearInterval(p.timer);
+      p.el.remove();
+      printers.delete(p.id);
+      renderEmpty();
+    }
+  } catch (e) {
+    log(p, "Ошибка: " + e.message);
+    q(".upstate").textContent = what === "upload" ? "Ошибка загрузки: " + e.message : q(".upstate").textContent;
+  }
+  poll(p);
+}
+
+// Стоп без системного диалога confirm(): второе нажатие в течение 3 с подтверждает.
+function confirmStop(p) {
+  const b = p.el.querySelector('[data-act="stop"]');
+  if (p.stopArmed) { p.stopArmed = false; b.textContent = "Стоп"; return true; }
+  p.stopArmed = true;
+  b.textContent = "Точно стоп?";
+  setTimeout(() => { p.stopArmed = false; b.textContent = "Стоп"; }, 3000);
+  return false;
+}
+
+function mount(cfg) {
+  const el = document.getElementById("tpl").content.firstElementChild.cloneNode(true);
+  const p = { ...cfg, el, queue: Promise.resolve(), uploading: false };
+  el.querySelector(".name").textContent = cfg.name;
+  el.querySelector(".host").textContent = cfg.host;
+  el.querySelector(".web").href = baseUrl(cfg.host);
+  el.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-act]");
+    if (b) act(p, b.dataset.act);
+  });
+  el.querySelector(".cmd").addEventListener("keydown", (e) => { if (e.key === "Enter") act(p, "send"); });
+  document.getElementById("grid").appendChild(el);
+  printers.set(cfg.id, p);
+  poll(p);
+  p.timer = setInterval(() => poll(p), POLL_MS);
+}
+
+function renderEmpty() {
+  const grid = document.getElementById("grid");
+  const empty = grid.querySelector(".empty");
+  if (printers.size === 0 && !empty) {
+    const d = document.createElement("div");
+    d.className = "empty";
+    d.textContent = "Принтеров пока нет. Нажмите «Добавить принтер» и укажите IP модуля ESP3D.";
+    grid.appendChild(d);
+  } else if (printers.size > 0 && empty) empty.remove();
+}
+
+document.getElementById("add").onclick = () => document.getElementById("dlg").showModal();
+document.getElementById("dlg").addEventListener("close", () => {
+  const dlg = document.getElementById("dlg");
+  const f = document.getElementById("dlgForm");
+  if (dlg.returnValue === "ok") {
+    const cfg = { id: Date.now().toString(36), name: f.name.value.trim(), host: f.host.value.trim() };
+    save([...load(), cfg]);
+    mount(cfg);
+    renderEmpty();
+  }
+  f.reset();
+});
+
+setInterval(() => { document.getElementById("clock").textContent = new Date().toLocaleTimeString(); }, 1000);
+load().forEach(mount);
+renderEmpty();
+</script>
+</body>
+</html>
