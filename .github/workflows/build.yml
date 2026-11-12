@@ -1,0 +1,49 @@
+name: Build firmware
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  marlin:
+    name: Marlin ${{ matrix.rev }}
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        rev: [c13]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-marlin-${{ matrix.rev }}-${{ hashFiles('scripts/build-marlin.sh') }}
+      - run: pip install platformio
+      - run: scripts/build-marlin.sh ${{ matrix.rev }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: marlin-${{ matrix.rev }}
+          path: out/*.bin
+
+  esp3d:
+    name: ESP3D (ESP32)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-esp3d-${{ hashFiles('scripts/build-esp3d.sh') }}
+      - run: pip install platformio esptool
+      - run: scripts/build-esp3d.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: esp3d-esp32
+          path: out/*.bin
