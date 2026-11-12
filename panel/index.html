@@ -192,8 +192,11 @@ async function poll(p) {
     q(".t-bed-set").textContent = t.bedSet ? "→ " + t.bedSet.toFixed(0) + "°" : "";
     q(".progress > div").style.width = pr.printing ? pr.pct.toFixed(1) + "%" : "0";
     q(".pct").textContent = pr.printing ? pr.pct.toFixed(1) + " %" : "";
-    q(".job").textContent = pr.printing ? "Печатает" + (p.lastFile ? ": " + p.lastFile : "") : "Нет печати";
-    setState(p, pr.printing ? "busy" : "on", pr.printing ? "печать" : "на связи");
+    if (pr.printing) p.paused = false;
+    const paused = !pr.printing && p.paused;
+    q(".job").textContent = pr.printing ? "Печатает" + (p.lastFile ? ": " + p.lastFile : "")
+      : paused ? "Пауза" + (p.lastFile ? ": " + p.lastFile : "") : "Нет печати";
+    setState(p, pr.printing || paused ? "busy" : "on", pr.printing ? "печать" : paused ? "пауза" : "на связи");
   } catch (e) {
     p.online = false;
     setState(p, "off", "нет связи");
@@ -232,36 +235,43 @@ function shortName(name) {
   return base.slice(0, 8) + ".GCO";
 }
 
-function upload(p, file) {
-  return enqueue(p, () => new Promise((resolve, reject) => {
+// Без отслеживания прогресса: подписка на xhr.upload делает запрос «непростым» по CORS,
+// браузер шлёт предварительный OPTIONS, а ESP3D его не обрабатывает. Узкое место всё равно
+// не Wi-Fi, а UART между ESP и принтером, поэтому показываем просто прошедшее время.
+async function upload(p, file) {
+  return enqueue(p, async () => {
     const name = shortName(file.name);
     const fd = new FormData();
     fd.append("file", file, name);
-    const xhr = new XMLHttpRequest();
     const st = p.el.querySelector(".upstate");
-    xhr.open("POST", baseUrl(p.host) + "/upload_serial");
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) st.textContent = "Загрузка " + name + ": " + ((100 * e.loaded) / e.total).toFixed(0) + " %";
-    };
-    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve(name) : reject(new Error("HTTP " + xhr.status)));
-    xhr.onerror = () => reject(new Error("сеть"));
-    xhr.send(fd);
-  }));
+    const t0 = Date.now();
+    const kb = Math.max(1, Math.round(file.size / 1024));
+    const tick = setInterval(() => {
+      st.textContent = "Загрузка " + name + " (" + kb + " КБ) на SD принтера: " + Math.round((Date.now() - t0) / 1000) + " с";
+    }, 1000);
+    try {
+      const r = await fetch(baseUrl(p.host) + "/upload_serial", { method: "POST", body: fd });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return name;
+    } finally { clearInterval(tick); }
+  });
 }
 
 async function startPrint(p, name) {
   await command(p, "M23 " + name);
   await command(p, "M24");
   p.lastFile = name;
+  p.paused = false;
   log(p, "> M23 " + name + " / M24");
 }
 
 async function act(p, what) {
   const q = (s) => p.el.querySelector(s);
   try {
-    if (what === "pause") log(p, await command(p, "M25"));
-    if (what === "resume") log(p, await command(p, "M24"));
-    if (what === "stop" && confirmStop(p)) log(p, await command(p, "M524"));
+    // Marlin на M27 во время паузы отвечает «Not SD printing», поэтому паузу помним сами
+    if (what === "pause") { log(p, await command(p, "M25")); p.paused = true; }
+    if (what === "resume") { log(p, await command(p, "M24")); p.paused = false; }
+    if (what === "stop" && confirmStop(p)) { log(p, await command(p, "M524")); p.paused = false; }
     if (what === "refresh") await refreshFiles(p);
     if (what === "print") {
       const f = q(".files").value;

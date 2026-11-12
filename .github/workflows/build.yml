@@ -47,3 +47,17 @@ jobs:
         with:
           name: esp3d-esp32
           path: out/*.bin
+
+  panel:
+    name: Panel test (emulator)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-save playwright@1.48.2 && npx playwright install --with-deps chromium
+      - run: |
+          python3 tools/esp3d_emulator.py --ports 8081 8082 8083 --upload-delay 1 &
+          sleep 2
+          node tools/panel_test.js
