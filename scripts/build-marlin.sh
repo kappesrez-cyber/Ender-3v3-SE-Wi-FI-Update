@@ -40,6 +40,10 @@ for p in "$ROOT"/marlin/"$REV"/*.patch; do
   git -C "$SRC" apply --whitespace=nowarn "$p"
 done
 
+# Исходники Creality писались под Windows: <arduino.h>, <wstring.h> в нижнем регистре.
+# На Linux/macOS подкладываем заголовки-переходники.
+export PLATFORMIO_BUILD_FLAGS="${PLATFORMIO_BUILD_FLAGS:-} -I$ROOT/marlin/shim"
+
 (cd "$SRC" && pio run -e "$ENV")
 
 BIN="$(ls "$SRC"/.pio/build/"$ENV"/*.bin | head -n1)"
