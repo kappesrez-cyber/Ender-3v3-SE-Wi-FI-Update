@@ -1,0 +1,34 @@
+diff --git a/esp3d/config.h b/esp3d/config.h
+index a9f005e..6ff611c 100644
+--- a/esp3d/config.h
++++ b/esp3d/config.h
+@@ -31,7 +31,7 @@
+ #define ESP_MANUFACTURER_NAME "Espressif Systems"
+ #define ESP_MANUFACTURER_URL "http://espressif.com"
+ //default name if no mac address is valid
+-#define ESP_DEFAULT_NAME "MYESP"
++#define ESP_DEFAULT_NAME "ender3v3se"
+ //if commented name will follow mac address 3 last digits
+ //like ESP_XXXXXX (eg:ESP_028E41) to avoid overlap if several ESP3D
+ #define ESP_HOST_NAME ESP_DEFAULT_NAME
+@@ -107,15 +107,16 @@
+ 
+ //which serial ESP use to communicate to printer (ESP32 has 3 serials available, ESP8266 only one)
+ //Uncomment one only
+-#define USE_SERIAL_0
++//#define USE_SERIAL_0
+ //For ESP32 Only
+ //#define USE_SERIAL_1
+-//#define USE_SERIAL_2
++// WI-FI ON ENDER: printer on UART2 (GPIO16 = RX2, GPIO17 = TX2), UART0 stays on USB for flashing/logs
++#define USE_SERIAL_2
+ 
+ //Pins Definition ////////////////////////////////////////////////////////////////////////
+ //-1 means use default pins of your board what ever the serial you choose
+-#define ESP_RX_PIN -1
+-#define ESP_TX_PIN -1
++#define ESP_RX_PIN 16
++#define ESP_TX_PIN 17
+ 
+ #ifdef RECOVERY_FEATURE
+ //pin used to reset setting

@@ -1,0 +1,64 @@
+name: Build firmware
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  marlin:
+    name: Marlin ${{ matrix.rev }} ${{ matrix.baud }}
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        rev: [c13]
+        baud: [115200, 250000]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-marlin-${{ matrix.rev }}-${{ hashFiles('scripts/build-marlin.sh') }}
+      - run: pip install platformio
+      - run: BAUD2=${{ matrix.baud }} scripts/build-marlin.sh ${{ matrix.rev }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: marlin-${{ matrix.rev }}-${{ matrix.baud }}
+          path: out/*.bin
+
+  esp3d:
+    name: ESP3D (ESP32)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-esp3d-${{ hashFiles('scripts/build-esp3d.sh') }}
+      - run: pip install platformio esptool
+      - run: scripts/build-esp3d.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: esp3d-esp32
+          path: out/*.bin
+
+  panel:
+    name: Panel test (emulator)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-save playwright@1.48.2 && npx playwright install --with-deps chromium
+      - run: |
+          python3 tools/esp3d_emulator.py --ports 8081 8082 8083 --upload-delay 1 &
+          sleep 2
+          node tools/panel_test.js

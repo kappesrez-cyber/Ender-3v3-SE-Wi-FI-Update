@@ -1,0 +1,40 @@
+diff --git a/esp3d/syncwebserver.cpp b/esp3d/syncwebserver.cpp
+index c4f4184..8fe4508 100644
+--- a/esp3d/syncwebserver.cpp
++++ b/esp3d/syncwebserver.cpp
+@@ -372,6 +372,8 @@ void handle_SSDP()
+ //SPIFFS files list and file commands///////////////////////////////////
+ void handleFileList()
+ {
++    // WI-FI ON ENDER: allow the multi-printer panel (served from another ESP) to read the reply
++    web_interface->web_server.sendHeader("Access-Control-Allow-Origin", "*");
+     level_authenticate_type auth_level = web_interface->is_authenticated();
+     if (auth_level == LEVEL_GUEST) {
+         web_interface->_upload_status=UPLOAD_STATUS_NONE;
+@@ -925,6 +927,8 @@ void handle_not_found()
+ //Handle web command query and send answer /////////////////////////////
+ void handle_web_command()
+ {
++    // WI-FI ON ENDER: allow the multi-printer panel (served from another ESP) to read the reply
++    web_interface->web_server.sendHeader("Access-Control-Allow-Origin", "*");
+     level_authenticate_type auth_level= web_interface->is_authenticated();
+     /*  if (auth_level == LEVEL_GUEST) {
+           web_interface->web_server.send(403,"text/plain","Not allowed, log in first!\n");
+@@ -1114,6 +1118,8 @@ void handle_web_command()
+ //Handle web command query and sent ack or fail instead of answer //////
+ void handle_web_command_silent()
+ {
++    // WI-FI ON ENDER: allow the multi-printer panel (served from another ESP) to read the reply
++    web_interface->web_server.sendHeader("Access-Control-Allow-Origin", "*");
+     level_authenticate_type auth_level= web_interface->is_authenticated();
+     if (auth_level == LEVEL_GUEST) {
+         web_interface->web_server.send(401,"text/plain","Authentication failed!\n");
+@@ -1177,6 +1183,8 @@ void handle_web_command_silent()
+ //Serial SD files list//////////////////////////////////////////////////
+ void handle_serial_SDFileList()
+ {
++    // WI-FI ON ENDER: allow the multi-printer panel (served from another ESP) to read the reply
++    web_interface->web_server.sendHeader("Access-Control-Allow-Origin", "*");
+ #ifndef USE_AS_UPDATER_ONLY
+     //this is only for admin an user
+     if (web_interface->is_authenticated() == LEVEL_GUEST) {

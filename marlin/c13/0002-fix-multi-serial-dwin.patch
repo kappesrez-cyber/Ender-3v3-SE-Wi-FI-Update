@@ -1,0 +1,16 @@
+diff --git a/Marlin/src/inc/Conditionals_LCD.h b/Marlin/src/inc/Conditionals_LCD.h
+index 1509cfb..02b546f 100644
+--- a/Marlin/src/inc/Conditionals_LCD.h
++++ b/Marlin/src/inc/Conditionals_LCD.h
+@@ -1012,7 +1012,10 @@
+ #endif
+ 
+ #if ENABLED(DWIN_CREALITY_LCD)
+-  #define SERIAL_CATCHALL 0
++  // WI-FI ON ENDER: SERIAL_CATCHALL 0 replaced the 2nd host port with a literal 0
++  // and broke builds with SERIAL_PORT_2. It has no effect
++  // with a single serial port, so the stock behaviour is unchanged.
++  //#define SERIAL_CATCHALL 0
+   #ifndef LCD_SERIAL_PORT
+     #define LCD_SERIAL_PORT 2 // Creality 4.x board
+   #endif
