@@ -46,7 +46,8 @@ Orca Slicer ──Wi-Fi/LAN──► Ноутбук (Debian/Ubuntu Server)
 3. **Klipper/Moonraker/Mainsail через KIAUH** — [docs/03-kiauh-install.md](docs/03-kiauh-install.md):
    `bash 02-install-kiauh.sh` (экземпляров Klipper и Moonraker — по числу принтеров).
 4. **Прошивка платы принтера** — [docs/02-firmware-c13-c14.md](docs/02-firmware-c13-c14.md).
-   Сначала узнай ревизию платы (C13 или C14)! `bash 03-build-firmware.sh --board c13`.
+   У нашего принтера плата **C13** (GD32F303RET6, кварц 8 МГц, проверено по фото):
+   `bash 03-build-firmware.sh --board c13`. Для других принтеров сначала узнай ревизию.
    Прошивка экрана должна быть **1.0.6**.
 5. **Подключить принтер(ы) по USB**, найти порт и поставить конфиг:
    ```sh
